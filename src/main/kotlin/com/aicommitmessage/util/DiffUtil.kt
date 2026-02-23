@@ -1,16 +1,12 @@
 package com.aicommitmessage.util
 
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.vcs.changes.ChangeListManager
+import com.intellij.openapi.vcs.changes.Change
 
 object DiffUtil {
 
     private const val MAX_DIFF_LENGTH = 10_000
 
-    fun getStagedDiff(project: Project): String {
-        val changeListManager = ChangeListManager.getInstance(project)
-        val changes = changeListManager.allChanges
-
+    fun getDiffFromChanges(changes: Collection<Change>): String {
         if (changes.isEmpty()) {
             return ""
         }

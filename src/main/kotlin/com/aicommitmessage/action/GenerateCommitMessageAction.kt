@@ -3,17 +3,15 @@ package com.aicommitmessage.action
 import com.aicommitmessage.service.AnthropicService
 import com.aicommitmessage.settings.AppSettings
 import com.aicommitmessage.util.DiffUtil
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.icons.AllIcons
-import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.progress.Task
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vcs.VcsDataKeys
-import com.intellij.openapi.vcs.changes.ChangeListManager
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class GenerateCommitMessageAction : AnAction(
     "Generate Commit Message",
@@ -35,40 +33,45 @@ class GenerateCommitMessageAction : AnAction(
             return
         }
 
-        val diff = DiffUtil.getStagedDiff(project)
-        if (diff.isBlank()) {
+        val selectedChanges = e.getData(VcsDataKeys.CHANGES)
+        if (selectedChanges.isNullOrEmpty()) {
             Messages.showInfoMessage(
                 project,
-                "No changes found. Please stage your changes first.",
+                "No changes selected. Please select files to include in the commit.",
                 "AI Commit Message"
             )
             return
         }
 
-        ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Generating commit message...", true) {
-            override fun run(indicator: ProgressIndicator) {
-                indicator.isIndeterminate = true
-                indicator.text = "Calling Claude API..."
+        val diff = DiffUtil.getDiffFromChanges(selectedChanges.toList())
+        if (diff.isBlank()) {
+            Messages.showInfoMessage(
+                project,
+                "No diff content found in selected changes.",
+                "AI Commit Message"
+            )
+            return
+        }
 
-                try {
-                    val message = runBlocking {
-                        AnthropicService.generateCommitMessage(diff)
-                    }
+        commitMessage.setCommitMessage("(generating commit message...)")
 
-                    ApplicationManager.getApplication().invokeLater {
-                        commitMessage.setCommitMessage(message)
-                    }
-                } catch (ex: Exception) {
-                    ApplicationManager.getApplication().invokeLater {
-                        Messages.showErrorDialog(
-                            project,
-                            "Failed to generate commit message: ${ex.message}",
-                            "AI Commit Message Error"
-                        )
-                    }
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val message = AnthropicService.generateCommitMessage(diff)
+                ApplicationManager.getApplication().invokeLater {
+                    commitMessage.setCommitMessage(message)
+                }
+            } catch (ex: Exception) {
+                ApplicationManager.getApplication().invokeLater {
+                    commitMessage.setCommitMessage("")
+                    Messages.showErrorDialog(
+                        project,
+                        "Failed to generate commit message: ${ex.message}",
+                        "AI Commit Message Error"
+                    )
                 }
             }
-        })
+        }
     }
 
     override fun update(e: AnActionEvent) {
@@ -78,7 +81,7 @@ class GenerateCommitMessageAction : AnAction(
             return
         }
 
-        val hasChanges = ChangeListManager.getInstance(project).allChanges.isNotEmpty()
-        e.presentation.isEnabled = hasChanges
+        val changes = e.getData(VcsDataKeys.CHANGES)
+        e.presentation.isEnabled = !changes.isNullOrEmpty()
     }
 }
