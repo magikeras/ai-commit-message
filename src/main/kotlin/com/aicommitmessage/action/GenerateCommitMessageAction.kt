@@ -4,11 +4,15 @@ import com.aicommitmessage.service.AnthropicService
 import com.aicommitmessage.settings.AppSettings
 import com.aicommitmessage.util.DiffUtil
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.vcs.CheckinProjectPanel
 import com.intellij.openapi.vcs.VcsDataKeys
+import com.intellij.openapi.vcs.changes.ChangeListManager
+import com.intellij.openapi.vcs.ui.Refreshable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -18,6 +22,8 @@ class GenerateCommitMessageAction : AnAction(
     "Generate commit message using Claude AI",
     AllIcons.Actions.Lightning
 ) {
+
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
@@ -33,8 +39,9 @@ class GenerateCommitMessageAction : AnAction(
             return
         }
 
-        val selectedChanges = e.getData(VcsDataKeys.CHANGES)
-        if (selectedChanges.isNullOrEmpty()) {
+        // Get checked (included) changes from the commit panel
+        val changes = getIncludedChanges(e)
+        if (changes.isEmpty()) {
             Messages.showInfoMessage(
                 project,
                 "No changes selected. Please select files to include in the commit.",
@@ -43,7 +50,7 @@ class GenerateCommitMessageAction : AnAction(
             return
         }
 
-        val diff = DiffUtil.getDiffFromChanges(selectedChanges.toList())
+        val diff = DiffUtil.getDiffFromChanges(changes)
         if (diff.isBlank()) {
             Messages.showInfoMessage(
                 project,
@@ -74,14 +81,24 @@ class GenerateCommitMessageAction : AnAction(
         }
     }
 
-    override fun update(e: AnActionEvent) {
-        val project = e.project
-        if (project == null) {
-            e.presentation.isEnabledAndVisible = false
-            return
+    private fun getIncludedChanges(e: AnActionEvent): Collection<com.intellij.openapi.vcs.changes.Change> {
+        // 1. Try CheckinProjectPanel (has checked/included changes)
+        val refreshable = e.getData(Refreshable.PANEL_KEY)
+        if (refreshable is CheckinProjectPanel) {
+            val selected = refreshable.selectedChanges
+            if (selected.isNotEmpty()) return selected
         }
 
-        val changes = e.getData(VcsDataKeys.CHANGES)
-        e.presentation.isEnabled = !changes.isNullOrEmpty()
+        // 2. Try VcsDataKeys.CHANGES (highlighted selection)
+        val vcsChanges = e.getData(VcsDataKeys.CHANGES)
+        if (!vcsChanges.isNullOrEmpty()) return vcsChanges.toList()
+
+        // 3. Fallback: all changes from default changelist
+        val project = e.project ?: return emptyList()
+        return ChangeListManager.getInstance(project).defaultChangeList.changes
+    }
+
+    override fun update(e: AnActionEvent) {
+        e.presentation.isEnabledAndVisible = e.project != null
     }
 }
