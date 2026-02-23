@@ -1,0 +1,55 @@
+<idea-plugin>
+    <id>com.aicommitmessage</id>
+    <name>AI Commit Message</name>
+    <vendor email="magikeras@gmail.com" url="https://github.com/magikeras">magikeras</vendor>
+
+    <description><![CDATA[
+    Generate commit messages in Conventional Commits format using Anthropic Claude AI.
+
+    <h3>Features</h3>
+    <ul>
+        <li>One-click commit message generation from staged changes</li>
+        <li>Conventional Commits format out of the box</li>
+        <li>Powered by Anthropic Claude (Sonnet, Haiku, Opus)</li>
+        <li>Multi-language support (English, Russian)</li>
+        <li>Customizable prompts</li>
+    </ul>
+
+    <h3>Usage</h3>
+    <ol>
+        <li>Configure your Anthropic API key in Settings → Tools → AI Commit Message</li>
+        <li>Stage your changes in Git</li>
+        <li>Open the Commit dialog</li>
+        <li>Click the ⚡ "Generate Commit Message" button in the commit toolbar</li>
+    </ol>
+
+    <h3>Requirements</h3>
+    <ul>
+        <li>Anthropic API key (get one at <a href="https://console.anthropic.com/">console.anthropic.com</a>)</li>
+        <li>Git integration enabled in your IDE</li>
+    </ul>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>Git4Idea</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.aicommitmessage.settings.AppSettingsConfigurable"
+                id="com.aicommitmessage.settings.AppSettingsConfigurable"
+                displayName="AI Commit Message"/>
+        <applicationService
+                serviceImplementation="com.aicommitmessage.settings.AppSettings"/>
+    </extensions>
+
+    <actions>
+        <action id="AICommitMessage.Generate"
+                class="com.aicommitmessage.action.GenerateCommitMessageAction"
+                text="Generate Commit Message"
+                description="Generate commit message using Claude AI"
+                icon="AllIcons.Actions.Lightning">
+            <add-to-group group-id="Vcs.MessageActionGroup" anchor="first"/>
+        </action>
+    </actions>
+</idea-plugin>
