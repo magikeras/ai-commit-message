@@ -1,17 +1,19 @@
 package com.aicommitmessage.util
 
 import com.intellij.openapi.vcs.changes.Change
+import com.intellij.openapi.vfs.VirtualFile
 
 object DiffUtil {
 
     private const val MAX_DIFF_LENGTH = 10_000
 
-    fun getDiffFromChanges(changes: Collection<Change>): String {
-        if (changes.isEmpty()) {
+    fun getDiffFromChanges(changes: Collection<Change>, unversionedFiles: Collection<VirtualFile> = emptyList()): String {
+        if (changes.isEmpty() && unversionedFiles.isEmpty()) {
             return ""
         }
 
         val sb = StringBuilder()
+
         for (change in changes) {
             val beforeRevision = change.beforeRevision
             val afterRevision = change.afterRevision
@@ -49,6 +51,32 @@ object DiffUtil {
                 sb.appendLine("... (diff truncated)")
                 break
             }
+        }
+
+        for (file in unversionedFiles) {
+            if (sb.length > MAX_DIFF_LENGTH) {
+                sb.appendLine("... (diff truncated)")
+                break
+            }
+
+            if (file.isDirectory) continue
+
+            val path = file.path
+            sb.appendLine("--- /dev/null")
+            sb.appendLine("+++ b/$path")
+            sb.appendLine("(new unversioned file)")
+
+            try {
+                val content = String(file.contentsToByteArray(), Charsets.UTF_8)
+                val lines = content.lines().take(100)
+                for (line in lines) {
+                    sb.appendLine("+$line")
+                }
+            } catch (_: Exception) {
+                sb.appendLine("+(binary or unreadable file)")
+            }
+
+            sb.appendLine()
         }
 
         return sb.toString().take(MAX_DIFF_LENGTH)

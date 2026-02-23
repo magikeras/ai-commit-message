@@ -8,11 +8,17 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.options.ShowSettingsUtil
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.vcs.CheckinProjectPanel
+import com.intellij.openapi.vcs.CommitMessageI
 import com.intellij.openapi.vcs.VcsDataKeys
+import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.ChangeListManager
 import com.intellij.openapi.vcs.ui.Refreshable
+import com.intellij.openapi.vfs.VirtualFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,40 +37,72 @@ class GenerateCommitMessageAction : AnAction(
 
         val settings = AppSettings.instance
         if (settings.apiKey.isBlank()) {
-            Messages.showWarningDialog(
-                project,
-                "Please configure your Anthropic API key in Settings > Tools > AI Commit Message.",
-                "AI Commit Message"
-            )
+            ShowSettingsUtil.getInstance().showSettingsDialog(project, "AI Commit Message")
             return
         }
 
-        // Get checked (included) changes from the commit panel
-        val changes = getIncludedChanges(e)
-        if (changes.isEmpty()) {
-            Messages.showInfoMessage(
-                project,
-                "No changes selected. Please select files to include in the commit.",
-                "AI Commit Message"
-            )
+        val (changes, unversionedFiles) = getIncludedChangesAndFiles(e)
+
+        if (changes.isEmpty() && unversionedFiles.isEmpty()) {
+            commitMessage.setCommitMessage("no selected changes")
             return
         }
 
-        val diff = DiffUtil.getDiffFromChanges(changes)
+        val diff = DiffUtil.getDiffFromChanges(changes, unversionedFiles)
         if (diff.isBlank()) {
-            Messages.showInfoMessage(
-                project,
-                "No diff content found in selected changes.",
-                "AI Commit Message"
-            )
+            commitMessage.setCommitMessage("no selected changes")
             return
         }
 
+        if (settings.askSkipTag) {
+            showSkipTagPopup(e, project, commitMessage, diff)
+        } else {
+            val skipTag = if (settings.defaultSkipTagEnabled && settings.skipTag != "none") {
+                settings.skipTag
+            } else {
+                "none"
+            }
+            generate(project, commitMessage, diff, skipTag)
+        }
+    }
+
+    private fun showSkipTagPopup(
+        e: AnActionEvent,
+        project: Project,
+        commitMessage: CommitMessageI,
+        diff: String
+    ) {
+        val settings = AppSettings.instance
+        val items = listOf(
+            "No skip tag",
+            "[#skip-ci]",
+            "[#skip-test]",
+            "[#skip-ci] [#skip-test]"
+        )
+
+        JBPopupFactory.getInstance()
+            .createPopupChooserBuilder(items)
+            .setTitle("Skip Tag")
+            .setItemChosenCallback { chosen ->
+                val skipTag = if (chosen == "No skip tag") "none" else chosen
+                if (skipTag != "none") settings.skipTag = skipTag
+                generate(project, commitMessage, diff, skipTag)
+            }
+            .createPopup()
+            .showInBestPositionFor(e.dataContext)
+    }
+
+    private fun generate(
+        project: Project,
+        commitMessage: CommitMessageI,
+        diff: String,
+        skipTag: String
+    ) {
         commitMessage.setCommitMessage("(generating commit message...)")
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val message = AnthropicService.generateCommitMessage(diff)
+                val message = AnthropicService.generateCommitMessage(diff, skipTag)
                 ApplicationManager.getApplication().invokeLater {
                     commitMessage.setCommitMessage(message)
                 }
@@ -81,21 +119,25 @@ class GenerateCommitMessageAction : AnAction(
         }
     }
 
-    private fun getIncludedChanges(e: AnActionEvent): Collection<com.intellij.openapi.vcs.changes.Change> {
-        // 1. Try CheckinProjectPanel (has checked/included changes)
+    private fun getIncludedChangesAndFiles(e: AnActionEvent): Pair<Collection<Change>, Collection<VirtualFile>> {
         val refreshable = e.getData(Refreshable.PANEL_KEY)
         if (refreshable is CheckinProjectPanel) {
-            val selected = refreshable.selectedChanges
-            if (selected.isNotEmpty()) return selected
+            val changes = refreshable.selectedChanges
+            val allFiles = refreshable.virtualFiles
+            val changedPaths = changes.mapNotNull {
+                (it.afterRevision?.file ?: it.beforeRevision?.file)?.path
+            }.toSet()
+            val unversionedFiles = allFiles.filter { it.path !in changedPaths }
+            return Pair(changes, unversionedFiles)
         }
 
-        // 2. Try VcsDataKeys.CHANGES (highlighted selection)
         val vcsChanges = e.getData(VcsDataKeys.CHANGES)
-        if (!vcsChanges.isNullOrEmpty()) return vcsChanges.toList()
+        if (!vcsChanges.isNullOrEmpty()) {
+            return Pair(vcsChanges.toList(), emptyList())
+        }
 
-        // 3. Fallback: all changes from default changelist
-        val project = e.project ?: return emptyList()
-        return ChangeListManager.getInstance(project).defaultChangeList.changes
+        val project = e.project ?: return Pair(emptyList(), emptyList())
+        return Pair(ChangeListManager.getInstance(project).defaultChangeList.changes, emptyList())
     }
 
     override fun update(e: AnActionEvent) {

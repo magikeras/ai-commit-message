@@ -20,6 +20,10 @@ class AppSettings : PersistentStateComponent<AppSettings.State> {
         var model: String = "claude-sonnet-4-6"
         var locale: String = "en"
         var customPrompt: String = ""
+        var messageDepth: String = "short"
+        var skipTag: String = "none"
+        var askSkipTag: Boolean = false
+        var defaultSkipTagEnabled: Boolean = false
     }
 
     private var myState = State()
@@ -41,6 +45,22 @@ class AppSettings : PersistentStateComponent<AppSettings.State> {
     var customPrompt: String
         get() = myState.customPrompt
         set(value) { myState.customPrompt = value }
+
+    var messageDepth: String
+        get() = myState.messageDepth
+        set(value) { myState.messageDepth = value }
+
+    var skipTag: String
+        get() = myState.skipTag
+        set(value) { myState.skipTag = value }
+
+    var askSkipTag: Boolean
+        get() = myState.askSkipTag
+        set(value) { myState.askSkipTag = value }
+
+    var defaultSkipTagEnabled: Boolean
+        get() = myState.defaultSkipTagEnabled
+        set(value) { myState.defaultSkipTagEnabled = value }
 
     var apiKey: String
         get() {
