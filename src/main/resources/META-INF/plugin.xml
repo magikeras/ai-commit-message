@@ -31,6 +31,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h3>1.2.5</h3>
+    <ul>
+        <li>Changelog now visible on JetBrains Marketplace</li>
+    </ul>
     <h3>1.2.3</h3>
     <ul>
         <li><b>Skip tags:</b> append [#skip-ci] / [#skip-test] to commit subject — with ask-each-time popup or default toggle</li>
@@ -43,11 +47,25 @@
         <li>Fix: skip tags now correctly use # symbol ([#skip-ci], [#skip-test])</li>
         <li>Fix: ActionUpdateThread deprecation warning</li>
     </ul>
+    <h3>1.2.0</h3>
+    <ul>
+        <li>Correctly get checked files from commit dialog via CheckinProjectPanel</li>
+        <li>Fix button always disabled in commit toolbar</li>
+    </ul>
     <h3>1.1.0</h3>
     <ul>
         <li>Generate from checked files only (not all changes)</li>
         <li>Show "(generating commit message...)" placeholder during API call</li>
         <li>Silent background generation without progress bar</li>
+    </ul>
+    <h3>1.0.2</h3>
+    <ul>
+        <li>Remove untilBuild limit — compatible with all future IDE versions</li>
+    </ul>
+    <h3>1.0.1</h3>
+    <ul>
+        <li>Extend compatibility to PhpStorm 2025.4</li>
+        <li>Add publishPlugin configuration</li>
     </ul>
     <h3>1.0.0</h3>
     <ul>
