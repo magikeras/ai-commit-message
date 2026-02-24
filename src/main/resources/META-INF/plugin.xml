@@ -30,6 +30,37 @@
     </ul>
     ]]></description>
 
+    <change-notes><![CDATA[
+    <h3>1.2.3</h3>
+    <ul>
+        <li><b>Skip tags:</b> append [#skip-ci] / [#skip-test] to commit subject — with ask-each-time popup or default toggle</li>
+        <li><b>Message depth:</b> short (subject only), medium (subject + brief body), detailed (subject + bullet points)</li>
+        <li><b>Unversioned files:</b> checked files from "Unversioned Files" section are now included in diff analysis</li>
+        <li><b>No selection handling:</b> shows "no selected changes" in commit field instead of popup dialog</li>
+        <li><b>Auto-open settings:</b> opens plugin settings directly when API key is missing</li>
+        <li><b>Expert prompt:</b> new built-in prompt focused on specific, actionable commit subjects</li>
+        <li><b>Settings override:</b> depth, skip tag, and locale always apply on top of custom prompt</li>
+        <li>Fix: skip tags now correctly use # symbol ([#skip-ci], [#skip-test])</li>
+        <li>Fix: ActionUpdateThread deprecation warning</li>
+    </ul>
+    <h3>1.1.0</h3>
+    <ul>
+        <li>Generate from checked files only (not all changes)</li>
+        <li>Show "(generating commit message...)" placeholder during API call</li>
+        <li>Silent background generation without progress bar</li>
+    </ul>
+    <h3>1.0.0</h3>
+    <ul>
+        <li>Initial release</li>
+        <li>One-click commit message generation using Claude AI</li>
+        <li>Conventional Commits format</li>
+        <li>Model selection (Sonnet, Haiku, Opus)</li>
+        <li>Multi-language support (English, Russian)</li>
+        <li>Custom prompt support</li>
+        <li>API key stored securely via PasswordSafe</li>
+    </ul>
+    ]]></change-notes>
+
     <depends>com.intellij.modules.platform</depends>
     <depends>Git4Idea</depends>
 
