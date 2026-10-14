@@ -61,6 +61,7 @@ class AppSettingsComponent {
 
     private val askSkipTagCheckBox = JBCheckBox("Ask about skip tag each time (popup before generation)")
     private val defaultSkipTagEnabledCheckBox = JBCheckBox("Append skip tag by default (when not asking)")
+    private val appendBranchTicketCheckBox = JBCheckBox("Append ticket ID from branch name (e.g. [CL-1234])")
 
     private val customPromptArea = JBTextArea(5, 40).apply {
         lineWrap = true
@@ -76,6 +77,8 @@ class AppSettingsComponent {
         .addLabeledComponent("Skip tag:", skipTagComboBox, 1, false)
         .addComponent(askSkipTagCheckBox)
         .addComponent(defaultSkipTagEnabledCheckBox)
+        .addSeparator()
+        .addComponent(appendBranchTicketCheckBox)
         .addSeparator()
         .addLabeledComponent("Custom prompt (optional):", JScrollPane(customPromptArea), 1, true)
         .addComponentFillVertically(JPanel(), 0)
@@ -111,6 +114,10 @@ class AppSettingsComponent {
     var defaultSkipTagEnabled: Boolean
         get() = defaultSkipTagEnabledCheckBox.isSelected
         set(value) { defaultSkipTagEnabledCheckBox.isSelected = value }
+
+    var appendBranchTicket: Boolean
+        get() = appendBranchTicketCheckBox.isSelected
+        set(value) { appendBranchTicketCheckBox.isSelected = value }
 
     var customPrompt: String
         get() = customPromptArea.text

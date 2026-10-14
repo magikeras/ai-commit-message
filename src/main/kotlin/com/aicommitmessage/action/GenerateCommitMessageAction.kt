@@ -2,6 +2,7 @@ package com.aicommitmessage.action
 
 import com.aicommitmessage.service.AnthropicService
 import com.aicommitmessage.settings.AppSettings
+import com.aicommitmessage.util.BranchTicket
 import com.aicommitmessage.util.DiffUtil
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -19,6 +20,8 @@ import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.ChangeListManager
 import com.intellij.openapi.vcs.ui.Refreshable
 import com.intellij.openapi.vfs.VirtualFile
+import git4idea.repo.GitRepository
+import git4idea.repo.GitRepositoryManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,15 +57,17 @@ class GenerateCommitMessageAction : AnAction(
             return
         }
 
+        val ticketId = if (settings.appendBranchTicket) findBranchTicketId(project, changes, unversionedFiles) else null
+
         if (settings.askSkipTag) {
-            showSkipTagPopup(e, project, commitMessage, diff)
+            showSkipTagPopup(e, project, commitMessage, diff, ticketId)
         } else {
             val skipTag = if (settings.defaultSkipTagEnabled && settings.skipTag != "none") {
                 settings.skipTag
             } else {
                 "none"
             }
-            generate(project, commitMessage, diff, skipTag)
+            generate(project, commitMessage, diff, skipTag, ticketId)
         }
     }
 
@@ -70,7 +75,8 @@ class GenerateCommitMessageAction : AnAction(
         e: AnActionEvent,
         project: Project,
         commitMessage: CommitMessageI,
-        diff: String
+        diff: String,
+        ticketId: String?
     ) {
         val settings = AppSettings.instance
         val items = listOf(
@@ -86,7 +92,7 @@ class GenerateCommitMessageAction : AnAction(
             .setItemChosenCallback { chosen ->
                 val skipTag = if (chosen == "No skip tag") "none" else chosen
                 if (skipTag != "none") settings.skipTag = skipTag
-                generate(project, commitMessage, diff, skipTag)
+                generate(project, commitMessage, diff, skipTag, ticketId)
             }
             .createPopup()
             .showInBestPositionFor(e.dataContext)
@@ -96,13 +102,15 @@ class GenerateCommitMessageAction : AnAction(
         project: Project,
         commitMessage: CommitMessageI,
         diff: String,
-        skipTag: String
+        skipTag: String,
+        ticketId: String?
     ) {
         commitMessage.setCommitMessage("(generating commit message...)")
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val message = AnthropicService.generateCommitMessage(diff, skipTag)
+                val generated = AnthropicService.generateCommitMessage(diff, skipTag)
+                val message = ticketId?.let { BranchTicket.appendTicket(generated, it) } ?: generated
                 ApplicationManager.getApplication().invokeLater {
                     commitMessage.setCommitMessage(message)
                 }
@@ -117,6 +125,27 @@ class GenerateCommitMessageAction : AnAction(
                 }
             }
         }
+    }
+
+    private fun findBranchTicketId(
+        project: Project,
+        changes: Collection<Change>,
+        unversionedFiles: Collection<VirtualFile>
+    ): String? {
+        val branchName = findRepository(project, changes, unversionedFiles)?.currentBranchName ?: return null
+        return BranchTicket.extractTicketId(branchName)
+    }
+
+    private fun findRepository(
+        project: Project,
+        changes: Collection<Change>,
+        unversionedFiles: Collection<VirtualFile>
+    ): GitRepository? {
+        val manager = GitRepositoryManager.getInstance(project)
+        return changes.firstNotNullOfOrNull { change ->
+            (change.afterRevision?.file ?: change.beforeRevision?.file)?.let { manager.getRepositoryForFileQuick(it) }
+        } ?: unversionedFiles.firstNotNullOfOrNull { manager.getRepositoryForFileQuick(it) }
+            ?: manager.repositories.firstOrNull()
     }
 
     private fun getIncludedChangesAndFiles(e: AnActionEvent): Pair<Collection<Change>, Collection<VirtualFile>> {

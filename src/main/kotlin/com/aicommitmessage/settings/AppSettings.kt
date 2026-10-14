@@ -24,6 +24,7 @@ class AppSettings : PersistentStateComponent<AppSettings.State> {
         var skipTag: String = "none"
         var askSkipTag: Boolean = false
         var defaultSkipTagEnabled: Boolean = false
+        var appendBranchTicket: Boolean = false
     }
 
     private var myState = State()
@@ -61,6 +62,10 @@ class AppSettings : PersistentStateComponent<AppSettings.State> {
     var defaultSkipTagEnabled: Boolean
         get() = myState.defaultSkipTagEnabled
         set(value) { myState.defaultSkipTagEnabled = value }
+
+    var appendBranchTicket: Boolean
+        get() = myState.appendBranchTicket
+        set(value) { myState.appendBranchTicket = value }
 
     var apiKey: String
         get() {

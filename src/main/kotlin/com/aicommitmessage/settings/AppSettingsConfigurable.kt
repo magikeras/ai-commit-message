@@ -28,6 +28,7 @@ class AppSettingsConfigurable : Configurable {
                 comp.skipTag != settings.skipTag ||
                 comp.askSkipTag != settings.askSkipTag ||
                 comp.defaultSkipTagEnabled != settings.defaultSkipTagEnabled ||
+                comp.appendBranchTicket != settings.appendBranchTicket ||
                 comp.customPrompt != settings.customPrompt
     }
 
@@ -41,6 +42,7 @@ class AppSettingsConfigurable : Configurable {
         settings.skipTag = comp.skipTag
         settings.askSkipTag = comp.askSkipTag
         settings.defaultSkipTagEnabled = comp.defaultSkipTagEnabled
+        settings.appendBranchTicket = comp.appendBranchTicket
         settings.customPrompt = comp.customPrompt
     }
 
@@ -54,6 +56,7 @@ class AppSettingsConfigurable : Configurable {
         comp.skipTag = settings.skipTag
         comp.askSkipTag = settings.askSkipTag
         comp.defaultSkipTagEnabled = settings.defaultSkipTagEnabled
+        comp.appendBranchTicket = settings.appendBranchTicket
         comp.customPrompt = settings.customPrompt
     }
 
